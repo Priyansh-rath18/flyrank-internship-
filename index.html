@@ -1,321 +1,373 @@
-from pathlib import Path
-
-html = r"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="A reproducible, decision-support study of content performance archetypes using DuckDB, Pandas, and K-Means clustering on the FlyRank ML Internship dataset." />
   <title>Content Archetypes — FlyRank Capstone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,380;0,9..144,480;0,9..144,600;1,9..144,460&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #f5f7fb;
-      --surface: #ffffff;
-      --text: #172033;
-      --muted: #5f6b7a;
-      --line: #dfe5ee;
-      --accent: #315efb;
-      --accent-soft: #eaf0ff;
-      --dark: #101828;
-      --success: #177245;
-      --warning: #9a6700;
-      --radius: 18px;
-      --shadow: 0 10px 35px rgba(16, 24, 40, 0.07);
+    :root{
+      --paper:#EEEAE0;
+      --paper-deep:#E4DECD;
+      --ink:#21261F;
+      --forest:#3B5240;
+      --forest-deep:#26362B;
+      --rust:#A6512D;
+      --brass:#8C6A22;
+      --line:#CBC1A6;
+      --card:#F7F4EA;
+      --radius:2px;
+    }
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{
+      margin:0;
+      background:var(--paper);
+      color:var(--ink);
+      font-family:"Fraunces", Georgia, serif;
+      font-optical-sizing:auto;
+      line-height:1.6;
+    }
+    .mono{font-family:"IBM Plex Mono", ui-monospace, monospace;}
+    a{color:var(--forest-deep);}
+    a:hover{color:var(--rust);}
+    .wrap{width:min(1180px, calc(100% - 40px)); margin:0 auto;}
+
+    /* ---- HERO ---- */
+    .hero{
+      background:var(--forest-deep);
+      color:var(--paper);
+      padding:0;
+      border-bottom:6px solid var(--rust);
+    }
+    .hero-inner{
+      padding:64px 0 48px;
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:30px;
+      align-items:end;
+    }
+    .plate-tag{
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.74rem;
+      letter-spacing:.06em;
+      color:#C9D6C6;
+      border:1px solid rgba(238,234,224,.35);
+      display:inline-block;
+      padding:4px 10px;
+      margin-bottom:22px;
+    }
+    h1{
+      font-weight:480;
+      font-size:clamp(2.1rem, 4.6vw, 3.9rem);
+      line-height:1.06;
+      max-width:820px;
+      margin:0 0 20px;
+      letter-spacing:-.01em;
+    }
+    .dek{
+      max-width:600px;
+      color:#D6DED0;
+      font-size:1.05rem;
+      font-style:italic;
+      border-left:2px solid var(--rust);
+      padding-left:16px;
+    }
+    .specimen-id{
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.78rem;
+      color:#AFC0AC;
+      text-align:right;
+      line-height:1.9;
+    }
+    .specimen-id b{color:var(--paper); font-weight:500;}
+
+    /* ---- LAYOUT ---- */
+    main{padding:0 0 80px;}
+    .layout{
+      display:grid;
+      grid-template-columns:1fr 200px;
+      gap:0 44px;
+      align-items:start;
+    }
+    .index-rail{
+      position:sticky;
+      top:26px;
+      padding-top:54px;
+    }
+    .index-rail .label{
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.72rem;
+      color:#7C7460;
+      margin-bottom:12px;
+      display:block;
+    }
+    .index-rail ol{
+      list-style:none;
+      margin:0; padding:0;
+      border-left:1px solid var(--line);
+    }
+    .index-rail li{margin:0;}
+    .index-rail a{
+      display:block;
+      padding:8px 0 8px 16px;
+      color:#5B5644;
+      text-decoration:none;
+      font-size:.9rem;
+      border-left:2px solid transparent;
+      margin-left:-1px;
+    }
+    .index-rail a:hover{color:var(--forest-deep); border-left-color:var(--rust);}
+
+    article{padding-top:54px;}
+    section{
+      border-top:1px solid var(--line);
+      padding:46px 0 8px;
+      scroll-margin-top:22px;
+    }
+    section:first-of-type{border-top:none;}
+    .plate-num{
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.76rem;
+      color:var(--rust);
+      display:block;
+      margin-bottom:6px;
+    }
+    h2{
+      margin:0 0 20px;
+      font-weight:480;
+      font-size:clamp(1.5rem, 2.6vw, 2.15rem);
+      letter-spacing:-.01em;
+    }
+    h3{margin:28px 0 10px; font-weight:600; font-size:1.15rem;}
+    p{margin:0 0 15px; max-width:74ch;}
+    .lede{
+      font-size:1.12rem;
+      max-width:66ch;
     }
 
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.65;
+    .field-note{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-left:3px solid var(--forest);
+      padding:16px 20px;
+      margin:20px 0;
+      position:relative;
+    }
+    .field-note::before{
+      content:"Field note";
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.68rem;
+      color:var(--forest);
+      display:block;
+      margin-bottom:6px;
+      letter-spacing:.03em;
+    }
+    .field-note.caution{border-left-color:var(--rust);}
+    .field-note.caution::before{content:"Caution"; color:var(--rust);}
+    .field-note.tbd{border-left-color:var(--brass);}
+    .field-note.tbd::before{content:"Unresolved"; color:var(--brass);}
+
+    .specimen-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:1px;
+      background:var(--line);
+      border:1px solid var(--line);
+      margin:18px 0;
+    }
+    .specimen{
+      background:var(--card);
+      padding:16px 18px;
+    }
+    .specimen h4{
+      margin:0 0 6px;
+      font-size:1rem;
+      font-weight:600;
+    }
+    .specimen p{margin:0; font-size:.92rem; color:#4B4536; max-width:none;}
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin:18px 0;
+      font-size:.92rem;
+    }
+    th,td{
+      text-align:left;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      vertical-align:top;
+    }
+    th{
+      font-family:"IBM Plex Mono", monospace;
+      font-weight:500;
+      font-size:.76rem;
+      color:#5B5644;
+      border-bottom:1px solid var(--ink);
+    }
+    code{
+      font-family:"IBM Plex Mono", monospace;
+      background:var(--paper-deep);
+      padding:1px 5px;
+      font-size:.87em;
+      border-radius:1px;
+    }
+    pre{
+      overflow-x:auto;
+      background:var(--forest-deep);
+      color:#E4E8DE;
+      padding:16px 18px;
+      font-size:.85rem;
+      border-left:3px solid var(--rust);
+    }
+    pre code{background:none; padding:0; color:inherit;}
+
+    figure{margin:26px 0;}
+    figure img{
+      display:block;
+      width:100%;
+      max-height:480px;
+      object-fit:contain;
+      background:var(--card);
+      border:1px solid var(--line);
+    }
+    figcaption{
+      font-family:"IBM Plex Mono", monospace;
+      color:#5B5644;
+      font-size:.78rem;
+      margin-top:8px;
     }
 
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .wrap { width: min(1120px, calc(100% - 36px)); margin: 0 auto; }
-    .hero {
-      background: linear-gradient(135deg, #101828, #233b78);
-      color: white;
-      padding: 76px 0 64px;
+    /* archetype color legend */
+    .archetype-row{
+      display:grid;
+      grid-template-columns:14px 1fr;
+      gap:14px;
+      margin:0 0 22px;
+      padding-bottom:20px;
+      border-bottom:1px solid var(--line);
     }
-    .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: .13em;
-      font-size: .78rem;
-      font-weight: 800;
-      opacity: .78;
+    .archetype-row:last-child{border-bottom:none; padding-bottom:0;}
+    .swatch{width:14px; height:14px; margin-top:4px;}
+    .archetype-row h3{margin:0 0 4px;}
+    .archetype-row .action{
+      font-family:"IBM Plex Mono", monospace;
+      font-size:.72rem;
+      color:var(--rust);
+      letter-spacing:.03em;
     }
-    h1 {
-      font-size: clamp(2.2rem, 5vw, 4.6rem);
-      line-height: 1.08;
-      max-width: 920px;
-      margin: 14px 0 20px;
-      letter-spacing: -.045em;
+    .c1{background:#3B5240;} .c2{background:#5E7A56;} .c3{background:#A6512D;}
+    .c4{background:#8C6A22;} .c5{background:#4A6E86;} .c6{background:#7B6A6A;}
+
+    footer{
+      background:var(--forest-deep);
+      color:#C9D6C6;
+      padding:36px 0;
+      border-top:6px solid var(--rust);
     }
-    .subtitle { max-width: 780px; font-size: 1.12rem; color: #dce6ff; }
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 28px;
+    footer strong{color:var(--paper); font-weight:600;}
+    .small{font-size:.86rem;}
+
+    @media (max-width: 880px){
+      .layout{grid-template-columns:1fr;}
+      .index-rail{position:static; padding-top:0; margin-bottom:20px;}
+      .index-rail ol{border-left:none; display:flex; flex-wrap:wrap; gap:4px 18px;}
+      .index-rail a{padding:4px 0; border-left:none;}
+      .specimen-grid{grid-template-columns:1fr;}
+      .hero-inner{grid-template-columns:1fr;}
+      .specimen-id{text-align:left;}
     }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 999px;
-      padding: 7px 12px;
-      font-size: .88rem;
-      color: #eef3ff;
-    }
-    main { padding: 34px 0 70px; }
-    .layout {
-      display: grid;
-      grid-template-columns: 245px minmax(0, 1fr);
-      gap: 30px;
-      align-items: start;
-    }
-    nav {
-      position: sticky;
-      top: 18px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 18px;
-      box-shadow: var(--shadow);
-    }
-    nav strong { display: block; margin-bottom: 10px; }
-    nav a {
-      display: block;
-      padding: 7px 0;
-      color: var(--muted);
-      font-size: .93rem;
-    }
-    nav a:hover { color: var(--accent); }
-    section {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: clamp(22px, 4vw, 38px);
-      margin-bottom: 22px;
-      box-shadow: var(--shadow);
-      scroll-margin-top: 20px;
-    }
-    h2 {
-      margin: 0 0 17px;
-      font-size: clamp(1.45rem, 3vw, 2rem);
-      letter-spacing: -.025em;
-      line-height: 1.2;
-    }
-    h3 { margin-top: 26px; line-height: 1.3; }
-    p { margin: 10px 0 15px; }
-    .abstract {
-      border-left: 4px solid var(--accent);
-      padding-left: 18px;
-      font-size: 1.04rem;
-    }
-    .callout {
-      background: var(--accent-soft);
-      border: 1px solid #cbd8ff;
-      border-radius: 14px;
-      padding: 16px 18px;
-      margin: 18px 0;
-    }
-    .warning {
-      background: #fff8e6;
-      border-color: #f1d28a;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 17px;
-      background: #fbfcff;
-    }
-    .card h3 { margin: 0 0 7px; font-size: 1.05rem; }
-    .muted { color: var(--muted); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0;
-      font-size: .94rem;
-    }
-    th, td {
-      text-align: left;
-      padding: 11px 12px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-    }
-    th { background: #f0f3f9; font-weight: 750; }
-    code {
-      background: #eef1f6;
-      padding: 2px 5px;
-      border-radius: 5px;
-      font-size: .9em;
-    }
-    pre {
-      overflow-x: auto;
-      background: #101828;
-      color: #e7edf7;
-      border-radius: 12px;
-      padding: 16px;
-      font-size: .87rem;
-    }
-    figure { margin: 22px 0; }
-    figure img {
-      display: block;
-      width: 100%;
-      max-height: 520px;
-      object-fit: contain;
-      background: #f8fafc;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    figcaption { color: var(--muted); font-size: .9rem; margin-top: 8px; }
-    .rank {
-      display: grid;
-      grid-template-columns: 45px minmax(0, 1fr);
-      gap: 13px;
-      margin: 18px 0;
-      align-items: start;
-    }
-    .rank-num {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: var(--dark);
-      color: white;
-      font-weight: 800;
-    }
-    .rank h3 { margin: 0 0 5px; }
-    footer {
-      background: var(--dark);
-      color: #dce6ff;
-      padding: 34px 0;
-    }
-    footer a { color: #a9c0ff; }
-    .small { font-size: .9rem; }
-    @media (max-width: 850px) {
-      .layout { grid-template-columns: 1fr; }
-      nav { position: static; }
-      nav a { display: inline-block; margin-right: 14px; }
-      .grid { grid-template-columns: 1fr; }
-    }
-    @media print {
-      body { background: white; }
-      nav { display: none; }
-      .layout { display: block; }
-      section { box-shadow: none; break-inside: avoid; }
-      .hero { color: black; background: white; padding: 25px 0; }
-      .subtitle, .pill { color: #333; }
+    @media print{
+      body{background:white;}
+      .index-rail{display:none;}
+      .layout{display:block;}
     }
   </style>
 </head>
 <body>
   <header class="hero">
-    <div class="wrap">
-      <div class="eyebrow">FlyRank ML Internship · Capstone Research Paper</div>
-      <h1>Content Archetypes for Content Review Prioritization</h1>
-      <p class="subtitle">
-        A descriptive, reproducible analysis of published content using search visibility,
-        engagement, authority, and content-level signals.
-      </p>
-      <div class="meta">
-        <span class="pill">Author: Priyansh Srivastava</span>
-        <span class="pill">Lane: Data Science / Machine Learning</span>
-        <span class="pill">Method: K-Means clustering</span>
-        <span class="pill">Status: Decision-support analysis</span>
+    <div class="wrap hero-inner">
+      <div>
+        <span class="plate-tag">FlyRank ML Internship — Capstone Field Report</span>
+        <h1>Content Archetypes for Content Review Prioritization</h1>
+        <p class="dek">A descriptive, reproducible survey of published content — classified by search visibility, engagement, authority, and content-level signals.</p>
+      </div>
+      <div class="specimen-id">
+        <div>Collector: <b>Priyansh Srivastava</b></div>
+        <div>Lane: <b>Data Science / ML</b></div>
+        <div>Method: <b>K-Means, standardized</b></div>
+        <div>Status: <b>Decision-support</b></div>
       </div>
     </div>
   </header>
 
   <main>
     <div class="wrap layout">
-      <nav aria-label="Paper sections">
-        <strong>Contents</strong>
-        <a href="#abstract">Abstract</a>
-        <a href="#problem">1. Problem framing</a>
-        <a href="#data">2. Data safety</a>
-        <a href="#baseline">3. Baseline</a>
-        <a href="#method">4. Model / analysis</a>
-        <a href="#evaluation">5. Evaluation</a>
-        <a href="#interpretation">6. Interpretation</a>
-        <a href="#recommendation">7. Recommendation</a>
-        <a href="#reproducibility">8. Reproducibility</a>
-        <a href="#acknowledgments">9. Acknowledgments</a>
-      </nav>
+      <article>
 
-      <div>
         <section id="abstract">
+          <span class="plate-num">Plate I</span>
           <h2>Abstract</h2>
-          <div class="abstract">
-            <p>
-              This study asks whether published content can be grouped into useful performance
-              archetypes to support content-review prioritization. The analysis uses the public
-              FlyRank ML Internship dataset, combining content attributes with search and
-              website-performance aggregates. DuckDB and Pandas were used for data preparation
-              and feature engineering, followed by standardized K-Means clustering. The
-              six-cluster analysis produced descriptive groups named Star Performer, Authority
-              Pillar, Visible Underconverter, Buried Thin Page, Hidden Engagement Gem, and
-              Dormant, with proposed actions such as Protect, Improve, Rewrite, Merge, Monitor,
-              and Prune. The output is a directional decision-support framework for helping
-              editors prioritize content review, not a proven prediction of future rankings
-              or traffic.
-            </p>
-          </div>
+          <p class="lede">
+            This study asks whether published content can be grouped into useful performance
+            archetypes to support content-review prioritization. The analysis uses the public
+            FlyRank ML Internship dataset, combining content attributes with search and
+            website-performance aggregates. DuckDB and Pandas were used for data preparation
+            and feature engineering, followed by standardized K-Means clustering. The
+            six-cluster analysis produced descriptive groups named Star Performer, Authority
+            Pillar, Visible Underconverter, Buried Thin Page, Hidden Engagement Gem, and
+            Dormant, with proposed actions such as Protect, Improve, Rewrite, Merge, Monitor,
+            and Prune. The output is a directional decision-support framework for helping
+            editors prioritize content review, not a proven prediction of future rankings
+            or traffic.
+          </p>
         </section>
 
         <section id="problem">
+          <span class="plate-num">Plate II</span>
           <h2>1. Problem framing</h2>
           <p>
             Content teams may have many published pages but limited time to decide which pages
             deserve review first. A single metric, such as impressions, can miss other useful
             signals such as engagement, ranking position, backlinks, and content depth.
           </p>
-          <div class="grid">
-            <div class="card">
-              <h3>Research question</h3>
-              <p class="muted">Can published content be grouped into meaningful performance archetypes using observed search, engagement, authority, and content-level signals?</p>
+          <div class="specimen-grid">
+            <div class="specimen">
+              <h4>Research question</h4>
+              <p>Can published content be grouped into meaningful performance archetypes using observed search, engagement, authority, and content-level signals?</p>
             </div>
-            <div class="card">
-              <h3>Unit of analysis</h3>
-              <p class="muted">A published content item identified by the pseudonymous <code>content_hash_id</code>.</p>
+            <div class="specimen">
+              <h4>Unit of analysis</h4>
+              <p>A published content item identified by the pseudonymous <code>content_hash_id</code>.</p>
             </div>
-            <div class="card">
-              <h3>Output</h3>
-              <p class="muted">A cluster assignment, descriptive archetype, proposed action, and cluster-level performance profile.</p>
+            <div class="specimen">
+              <h4>Output</h4>
+              <p>A cluster assignment, descriptive archetype, proposed action, and cluster-level performance profile.</p>
             </div>
-            <div class="card">
-              <h3>Human decision</h3>
-              <p class="muted">An editor uses the output to prioritize manual checks, not to make automatic content changes.</p>
+            <div class="specimen">
+              <h4>Human decision</h4>
+              <p>An editor uses the output to prioritize manual checks, not to make automatic content changes.</p>
             </div>
           </div>
-          <div class="callout warning">
-            <strong>Cost of a wrong call:</strong> An incorrect recommendation could cause an
-            unnecessary rewrite, an unsafe consolidation, the removal of useful content, or a
-            missed improvement opportunity.
+          <div class="field-note caution">
+            <p style="margin:0;">An incorrect recommendation could cause an unnecessary rewrite, an
+            unsafe consolidation, the removal of useful content, or a missed improvement opportunity.</p>
           </div>
         </section>
 
         <section id="data">
+          <span class="plate-num">Plate III</span>
           <h2>2. Data safety</h2>
           <p>
             The analysis uses the public FlyRank internship warehouse:
             <code>FlyRank/internship-warehouse</code>.
           </p>
           <table>
-            <thead>
-              <tr><th>Table</th><th>Purpose</th></tr>
-            </thead>
+            <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
             <tbody>
               <tr><td><code>dim_content.parquet</code></td><td>Content attributes, search demand, authority-related fields, and publication status.</td></tr>
               <tr><td><code>fact_content_query_90d.parquet</code></td><td>Query-level search-performance aggregates over a 90-day window.</td></tr>
@@ -341,15 +393,16 @@ html = r"""<!DOCTYPE html>
             <li>Did not expose private queries, client names, private URLs, or credentials.</li>
           </ul>
 
-          <div class="callout warning">
-            <strong>Leakage check:</strong> A future predictive evaluation must calculate features
+          <div class="field-note caution">
+            <p style="margin:0;">A future predictive evaluation must calculate features
             only from information available before the evaluation period. Future clicks,
             impressions, trend labels, and other outcome-derived fields must not enter the
-            feature matrix.
+            feature matrix.</p>
           </div>
         </section>
 
         <section id="baseline">
+          <span class="plate-num">Plate IV</span>
           <h2>3. Baseline</h2>
           <p>
             The proposed baseline ranks eligible content by 90-day impressions, from highest to
@@ -360,14 +413,15 @@ html = r"""<!DOCTYPE html>
             reproduce. The baseline and clustering-based method must use the same content
             population, selection budget, evaluation window, and outcome metric.
           </p>
-          <div class="callout warning">
-            <strong>Result status:</strong> The numerical baseline comparison has not been
+          <div class="field-note tbd">
+            <p style="margin:0;">The numerical baseline comparison has not been
             populated on this page. It must be generated by the completed notebook and reported
-            only after a fresh run.
+            only after a fresh run.</p>
           </div>
         </section>
 
         <section id="method">
+          <span class="plate-num">Plate V</span>
           <h2>4. Model / analysis</h2>
           <p>
             The analysis uses standardized K-Means clustering to group content according to
@@ -387,36 +441,45 @@ html = r"""<!DOCTYPE html>
           </ol>
 
           <h3>Feature list</h3>
-          <p>
-            <code>log_impressions</code>, <code>log_clicks</code>, <code>ctr_90d</code>,
-            <code>avg_position_90d_w</code>, <code>momentum</code>, <code>query_count</code>,
-            <code>rare_impressions_share_avg</code>, <code>engagement_rate</code>,
-            <code>avg_engagement_sec</code>, <code>log_scroll_events</code>,
-            <code>log_backlinks</code>, <code>log_search_volume</code>, and
-            <code>word_count</code>.
+          <p class="mono" style="font-size:.88rem; max-width:none;">
+            log_impressions · log_clicks · ctr_90d · avg_position_90d_w · momentum ·
+            query_count · rare_impressions_share_avg · engagement_rate · avg_engagement_sec ·
+            log_scroll_events · log_backlinks · log_search_volume · word_count
           </p>
 
-          <h3>Archetype mapping</h3>
-          <table>
-            <thead>
-              <tr><th>Cluster</th><th>Archetype</th><th>Proposed action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>3</td><td>Star Performer</td><td>Protect</td></tr>
-              <tr><td>2</td><td>Authority Pillar</td><td>Improve</td></tr>
-              <tr><td>0</td><td>Visible Underconverter</td><td>Rewrite</td></tr>
-              <tr><td>4</td><td>Buried Thin Page</td><td>Merge</td></tr>
-              <tr><td>5</td><td>Hidden Engagement Gem</td><td>Monitor</td></tr>
-              <tr><td>1</td><td>Dormant</td><td>Prune</td></tr>
-            </tbody>
-          </table>
-          <p class="muted">
+          <h3>Archetype key</h3>
+          <div class="archetype-row">
+            <div class="swatch c1"></div>
+            <div><h3 style="margin-top:0;">3 · Star Performer</h3><span class="action">Action: Protect</span></div>
+          </div>
+          <div class="archetype-row">
+            <div class="swatch c2"></div>
+            <div><h3 style="margin-top:0;">2 · Authority Pillar</h3><span class="action">Action: Improve</span></div>
+          </div>
+          <div class="archetype-row">
+            <div class="swatch c3"></div>
+            <div><h3 style="margin-top:0;">0 · Visible Underconverter</h3><span class="action">Action: Rewrite</span></div>
+          </div>
+          <div class="archetype-row">
+            <div class="swatch c4"></div>
+            <div><h3 style="margin-top:0;">4 · Buried Thin Page</h3><span class="action">Action: Merge</span></div>
+          </div>
+          <div class="archetype-row">
+            <div class="swatch c5"></div>
+            <div><h3 style="margin-top:0;">5 · Hidden Engagement Gem</h3><span class="action">Action: Monitor</span></div>
+          </div>
+          <div class="archetype-row">
+            <div class="swatch c6"></div>
+            <div><h3 style="margin-top:0;">1 · Dormant</h3><span class="action">Action: Prune</span></div>
+          </div>
+          <p style="font-size:.9rem; color:#5B5644;">
             These names are analyst interpretations of cluster profiles. There is no supervised
             ground-truth action label in the current analysis.
           </p>
         </section>
 
         <section id="evaluation">
+          <span class="plate-num">Plate VI</span>
           <h2>5. Evaluation</h2>
           <p>
             The current notebook evaluates internal cluster structure using silhouette scores
@@ -435,9 +498,7 @@ html = r"""<!DOCTYPE html>
 
           <h3>Results table</h3>
           <table>
-            <thead>
-              <tr><th>Metric</th><th>Baseline</th><th>Clustering-based method</th></tr>
-            </thead>
+            <thead><tr><th>Metric</th><th>Baseline</th><th>Clustering-based method</th></tr></thead>
             <tbody>
               <tr><td>Selection budget</td><td>To verify</td><td>To verify</td></tr>
               <tr><td>Evaluation population</td><td>To verify</td><td>To verify</td></tr>
@@ -453,20 +514,21 @@ html = r"""<!DOCTYPE html>
             Candidate values of K from 4 to 7 are evaluated with silhouette score. The exact
             values from the fresh notebook run should be inserted here before publication.
           </p>
-          <ul>
+          <ul class="mono" style="font-size:.9rem;">
             <li>K = 4: To verify</li>
             <li>K = 5: To verify</li>
             <li>K = 6: To verify</li>
             <li>K = 7: To verify</li>
           </ul>
 
-          <div class="callout warning">
-            <strong>Honest framing:</strong> No accuracy, lift, or improvement percentage is
-            claimed until the baseline and model are evaluated on the same valid split.
+          <div class="field-note caution">
+            <p style="margin:0;">No accuracy, lift, or improvement percentage is
+            claimed until the baseline and model are evaluated on the same valid split.</p>
           </div>
         </section>
 
         <section id="interpretation">
+          <span class="plate-num">Plate VII</span>
           <h2>6. Interpretation</h2>
           <p>
             The six-cluster solution separates content into groups with different observed
@@ -474,23 +536,23 @@ html = r"""<!DOCTYPE html>
             signals.
           </p>
 
-          <div class="grid">
-            <div class="card"><h3>Star Performer</h3><p class="muted">Interpreted as strong observed performance. Proposed action: Protect.</p></div>
-            <div class="card"><h3>Authority Pillar</h3><p class="muted">Interpreted as strong authority or visibility with possible improvement opportunities. Proposed action: Improve.</p></div>
-            <div class="card"><h3>Visible Underconverter</h3><p class="muted">Interpreted as visible content with weaker click performance relative to exposure. Proposed action: Rewrite.</p></div>
-            <div class="card"><h3>Buried Thin Page</h3><p class="muted">Interpreted as limited visibility with weaker content-depth signals. Proposed action: Review for Merge.</p></div>
-            <div class="card"><h3>Hidden Engagement Gem</h3><p class="muted">Interpreted as useful engagement despite limited search visibility. Proposed action: Monitor.</p></div>
-            <div class="card"><h3>Dormant</h3><p class="muted">Interpreted as limited observed activity. Proposed action: Review for Prune.</p></div>
+          <div class="specimen-grid">
+            <div class="specimen"><h4>Star Performer</h4><p>Interpreted as strong observed performance. Proposed action: Protect.</p></div>
+            <div class="specimen"><h4>Authority Pillar</h4><p>Interpreted as strong authority or visibility with possible improvement opportunities. Proposed action: Improve.</p></div>
+            <div class="specimen"><h4>Visible Underconverter</h4><p>Interpreted as visible content with weaker click performance relative to exposure. Proposed action: Rewrite.</p></div>
+            <div class="specimen"><h4>Buried Thin Page</h4><p>Interpreted as limited visibility with weaker content-depth signals. Proposed action: Review for Merge.</p></div>
+            <div class="specimen"><h4>Hidden Engagement Gem</h4><p>Interpreted as useful engagement despite limited search visibility. Proposed action: Monitor.</p></div>
+            <div class="specimen"><h4>Dormant</h4><p>Interpreted as limited observed activity. Proposed action: Review for Prune.</p></div>
           </div>
 
           <h3>Visual evidence</h3>
           <figure>
             <img src="assets/archetype_sizes.png" alt="Bar chart showing the number of content items in each archetype." />
-            <figcaption>Figure 1. Content archetypes by size. Add the generated chart at assets/archetype_sizes.png.</figcaption>
+            <figcaption>Fig. 1 — Content archetypes by size. Add the generated chart at assets/archetype_sizes.png.</figcaption>
           </figure>
           <figure>
             <img src="assets/archetype_scatter.png" alt="Scatter plot showing log impressions versus average search position, colored by cluster." />
-            <figcaption>Figure 2. Visibility versus ranking position. Add the generated chart at assets/archetype_scatter.png.</figcaption>
+            <figcaption>Fig. 2 — Visibility versus ranking position. Add the generated chart at assets/archetype_scatter.png.</figcaption>
           </figure>
 
           <p>
@@ -500,45 +562,34 @@ html = r"""<!DOCTYPE html>
         </section>
 
         <section id="recommendation">
+          <span class="plate-num">Plate VIII</span>
           <h2>7. Recommendation</h2>
           <p>
             The following playbook is a proposed operational review order. It is not a measured
             ranking of business impact.
           </p>
 
-          <div class="rank">
-            <div class="rank-num">1</div>
-            <div><h3>Review Visible Underconverters — Rewrite</h3><p>Check search intent, titles, descriptions, page openings, and whether the content matches the likely user need.</p></div>
-          </div>
-          <div class="rank">
-            <div class="rank-num">2</div>
-            <div><h3>Protect Star Performers</h3><p>Monitor clicks, impressions, ranking, and engagement. Avoid unnecessary changes to pages with strong observed performance.</p></div>
-          </div>
-          <div class="rank">
-            <div class="rank-num">3</div>
-            <div><h3>Improve Authority Pillars</h3><p>Review completeness, internal linking, related-topic coverage, and intent alignment.</p></div>
-          </div>
-          <div class="rank">
-            <div class="rank-num">4</div>
-            <div><h3>Review Buried Thin Pages — Merge candidates</h3><p>Check unique purpose, valuable links, duplication, and whether consolidation is appropriate.</p></div>
-          </div>
-          <div class="rank">
-            <div class="rank-num">5</div>
-            <div><h3>Monitor Hidden Engagement Gems</h3><p>Investigate other traffic sources, internal navigation, and whether the page serves a narrow but valuable audience.</p></div>
-          </div>
-          <div class="rank">
-            <div class="rank-num">6</div>
-            <div><h3>Review Dormant Pages — Prune candidates</h3><p>Check business importance, backlinks, historical value, and whether refreshing or redirecting is better than removal.</p></div>
-          </div>
+          <table>
+            <thead><tr><th>Order</th><th>Archetype — action</th><th>What to check</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">1</td><td>Visible Underconverters — Rewrite</td><td>Search intent, titles, descriptions, page openings, and whether the content matches the likely user need.</td></tr>
+              <tr><td class="mono">2</td><td>Star Performers — Protect</td><td>Monitor clicks, impressions, ranking, and engagement. Avoid unnecessary changes.</td></tr>
+              <tr><td class="mono">3</td><td>Authority Pillars — Improve</td><td>Completeness, internal linking, related-topic coverage, and intent alignment.</td></tr>
+              <tr><td class="mono">4</td><td>Buried Thin Pages — Merge candidates</td><td>Unique purpose, valuable links, duplication, and whether consolidation is appropriate.</td></tr>
+              <tr><td class="mono">5</td><td>Hidden Engagement Gems — Monitor</td><td>Other traffic sources, internal navigation, and whether the page serves a narrow but valuable audience.</td></tr>
+              <tr><td class="mono">6</td><td>Dormant Pages — Prune candidates</td><td>Business importance, backlinks, historical value, and whether refreshing or redirecting is better than removal.</td></tr>
+            </tbody>
+          </table>
 
-          <div class="callout">
-            <strong>How to use the output:</strong> Filter the action playbook, inspect a small sample
+          <div class="field-note">
+            <p style="margin:0;">Filter the action playbook, inspect a small sample
             from each archetype, check business and technical context, record the human decision,
-            and measure the result in a future period.
+            and measure the result in a future period.</p>
           </div>
         </section>
 
         <section id="reproducibility">
+          <span class="plate-num">Plate IX</span>
           <h2>8. Reproducibility</h2>
           <p>
             The analysis notebook and report should be committed to the project repository.
@@ -564,16 +615,14 @@ html = r"""<!DOCTYPE html>
     └── paper_url.txt</code></pre>
 
           <h3>Environment</h3>
-          <p>
-            Python, DuckDB, Pandas, NumPy, scikit-learn, and Matplotlib.
-          </p>
+          <p>Python, DuckDB, Pandas, NumPy, scikit-learn, and Matplotlib.</p>
           <pre><code>pip install duckdb pandas numpy scikit-learn matplotlib</code></pre>
 
           <h3>Random seeds</h3>
-          <ul>
-            <li>K-Means: <code>random_state=42</code></li>
-            <li>Sampling: <code>random_state=42</code></li>
-            <li>Silhouette evaluation: <code>random_state=42</code></li>
+          <ul class="mono" style="font-size:.9rem;">
+            <li>K-Means: random_state=42</li>
+            <li>Sampling: random_state=42</li>
+            <li>Silhouette evaluation: random_state=42</li>
           </ul>
 
           <p>
@@ -585,21 +634,33 @@ html = r"""<!DOCTYPE html>
         </section>
 
         <section id="acknowledgments">
+          <span class="plate-num">Plate X</span>
           <h2>9. Acknowledgments &amp; data credit</h2>
-          <p>
-            Built on the
-            <strong>FlyRank ML Internship dataset</strong>.
-          </p>
-          <p>
-            Data source:
-            <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a>.
-          </p>
-          <p class="muted">
+          <p>Built on the <strong>FlyRank ML Internship dataset</strong>.</p>
+          <p>Data source: <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a>.</p>
+          <p style="color:#5B5644;">
             The archetypes and recommendations presented here are descriptive, directional
             decision-support outputs based on the available dataset and analysis.
           </p>
         </section>
-      </div>
+
+      </article>
+
+      <nav class="index-rail" aria-label="Paper sections">
+        <span class="label">Index</span>
+        <ol>
+          <li><a href="#abstract">Abstract</a></li>
+          <li><a href="#problem">I · Problem framing</a></li>
+          <li><a href="#data">II · Data safety</a></li>
+          <li><a href="#baseline">III · Baseline</a></li>
+          <li><a href="#method">IV · Model / analysis</a></li>
+          <li><a href="#evaluation">V · Evaluation</a></li>
+          <li><a href="#interpretation">VI · Interpretation</a></li>
+          <li><a href="#recommendation">VII · Recommendation</a></li>
+          <li><a href="#reproducibility">VIII · Reproducibility</a></li>
+          <li><a href="#acknowledgments">IX · Acknowledgments</a></li>
+        </ol>
+      </nav>
     </div>
   </main>
 
@@ -614,9 +675,3 @@ html = r"""<!DOCTYPE html>
   </footer>
 </body>
 </html>
-"""
-
-path = Path("/mnt/data/index.html")
-path.write_text(html, encoding="utf-8")
-print(f"Created: {path}")
-print(f"File size: {path.stat().st_size} bytes")
