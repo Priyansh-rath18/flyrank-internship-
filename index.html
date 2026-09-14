@@ -1,0 +1,622 @@
+from pathlib import Path
+
+html = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A reproducible, decision-support study of content performance archetypes using DuckDB, Pandas, and K-Means clustering on the FlyRank ML Internship dataset." />
+  <title>Content Archetypes — FlyRank Capstone</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --text: #172033;
+      --muted: #5f6b7a;
+      --line: #dfe5ee;
+      --accent: #315efb;
+      --accent-soft: #eaf0ff;
+      --dark: #101828;
+      --success: #177245;
+      --warning: #9a6700;
+      --radius: 18px;
+      --shadow: 0 10px 35px rgba(16, 24, 40, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { width: min(1120px, calc(100% - 36px)); margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #101828, #233b78);
+      color: white;
+      padding: 76px 0 64px;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      font-size: .78rem;
+      font-weight: 800;
+      opacity: .78;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 4.6rem);
+      line-height: 1.08;
+      max-width: 920px;
+      margin: 14px 0 20px;
+      letter-spacing: -.045em;
+    }
+    .subtitle { max-width: 780px; font-size: 1.12rem; color: #dce6ff; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: .88rem;
+      color: #eef3ff;
+    }
+    main { padding: 34px 0 70px; }
+    .layout {
+      display: grid;
+      grid-template-columns: 245px minmax(0, 1fr);
+      gap: 30px;
+      align-items: start;
+    }
+    nav {
+      position: sticky;
+      top: 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    nav strong { display: block; margin-bottom: 10px; }
+    nav a {
+      display: block;
+      padding: 7px 0;
+      color: var(--muted);
+      font-size: .93rem;
+    }
+    nav a:hover { color: var(--accent); }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(22px, 4vw, 38px);
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+      scroll-margin-top: 20px;
+    }
+    h2 {
+      margin: 0 0 17px;
+      font-size: clamp(1.45rem, 3vw, 2rem);
+      letter-spacing: -.025em;
+      line-height: 1.2;
+    }
+    h3 { margin-top: 26px; line-height: 1.3; }
+    p { margin: 10px 0 15px; }
+    .abstract {
+      border-left: 4px solid var(--accent);
+      padding-left: 18px;
+      font-size: 1.04rem;
+    }
+    .callout {
+      background: var(--accent-soft);
+      border: 1px solid #cbd8ff;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin: 18px 0;
+    }
+    .warning {
+      background: #fff8e6;
+      border-color: #f1d28a;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 17px;
+      background: #fbfcff;
+    }
+    .card h3 { margin: 0 0 7px; font-size: 1.05rem; }
+    .muted { color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: .94rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { background: #f0f3f9; font-weight: 750; }
+    code {
+      background: #eef1f6;
+      padding: 2px 5px;
+      border-radius: 5px;
+      font-size: .9em;
+    }
+    pre {
+      overflow-x: auto;
+      background: #101828;
+      color: #e7edf7;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: .87rem;
+    }
+    figure { margin: 22px 0; }
+    figure img {
+      display: block;
+      width: 100%;
+      max-height: 520px;
+      object-fit: contain;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    figcaption { color: var(--muted); font-size: .9rem; margin-top: 8px; }
+    .rank {
+      display: grid;
+      grid-template-columns: 45px minmax(0, 1fr);
+      gap: 13px;
+      margin: 18px 0;
+      align-items: start;
+    }
+    .rank-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--dark);
+      color: white;
+      font-weight: 800;
+    }
+    .rank h3 { margin: 0 0 5px; }
+    footer {
+      background: var(--dark);
+      color: #dce6ff;
+      padding: 34px 0;
+    }
+    footer a { color: #a9c0ff; }
+    .small { font-size: .9rem; }
+    @media (max-width: 850px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; }
+      nav a { display: inline-block; margin-right: 14px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: white; }
+      nav { display: none; }
+      .layout { display: block; }
+      section { box-shadow: none; break-inside: avoid; }
+      .hero { color: black; background: white; padding: 25px 0; }
+      .subtitle, .pill { color: #333; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">FlyRank ML Internship · Capstone Research Paper</div>
+      <h1>Content Archetypes for Content Review Prioritization</h1>
+      <p class="subtitle">
+        A descriptive, reproducible analysis of published content using search visibility,
+        engagement, authority, and content-level signals.
+      </p>
+      <div class="meta">
+        <span class="pill">Author: Priyansh Srivastava</span>
+        <span class="pill">Lane: Data Science / Machine Learning</span>
+        <span class="pill">Method: K-Means clustering</span>
+        <span class="pill">Status: Decision-support analysis</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap layout">
+      <nav aria-label="Paper sections">
+        <strong>Contents</strong>
+        <a href="#abstract">Abstract</a>
+        <a href="#problem">1. Problem framing</a>
+        <a href="#data">2. Data safety</a>
+        <a href="#baseline">3. Baseline</a>
+        <a href="#method">4. Model / analysis</a>
+        <a href="#evaluation">5. Evaluation</a>
+        <a href="#interpretation">6. Interpretation</a>
+        <a href="#recommendation">7. Recommendation</a>
+        <a href="#reproducibility">8. Reproducibility</a>
+        <a href="#acknowledgments">9. Acknowledgments</a>
+      </nav>
+
+      <div>
+        <section id="abstract">
+          <h2>Abstract</h2>
+          <div class="abstract">
+            <p>
+              This study asks whether published content can be grouped into useful performance
+              archetypes to support content-review prioritization. The analysis uses the public
+              FlyRank ML Internship dataset, combining content attributes with search and
+              website-performance aggregates. DuckDB and Pandas were used for data preparation
+              and feature engineering, followed by standardized K-Means clustering. The
+              six-cluster analysis produced descriptive groups named Star Performer, Authority
+              Pillar, Visible Underconverter, Buried Thin Page, Hidden Engagement Gem, and
+              Dormant, with proposed actions such as Protect, Improve, Rewrite, Merge, Monitor,
+              and Prune. The output is a directional decision-support framework for helping
+              editors prioritize content review, not a proven prediction of future rankings
+              or traffic.
+            </p>
+          </div>
+        </section>
+
+        <section id="problem">
+          <h2>1. Problem framing</h2>
+          <p>
+            Content teams may have many published pages but limited time to decide which pages
+            deserve review first. A single metric, such as impressions, can miss other useful
+            signals such as engagement, ranking position, backlinks, and content depth.
+          </p>
+          <div class="grid">
+            <div class="card">
+              <h3>Research question</h3>
+              <p class="muted">Can published content be grouped into meaningful performance archetypes using observed search, engagement, authority, and content-level signals?</p>
+            </div>
+            <div class="card">
+              <h3>Unit of analysis</h3>
+              <p class="muted">A published content item identified by the pseudonymous <code>content_hash_id</code>.</p>
+            </div>
+            <div class="card">
+              <h3>Output</h3>
+              <p class="muted">A cluster assignment, descriptive archetype, proposed action, and cluster-level performance profile.</p>
+            </div>
+            <div class="card">
+              <h3>Human decision</h3>
+              <p class="muted">An editor uses the output to prioritize manual checks, not to make automatic content changes.</p>
+            </div>
+          </div>
+          <div class="callout warning">
+            <strong>Cost of a wrong call:</strong> An incorrect recommendation could cause an
+            unnecessary rewrite, an unsafe consolidation, the removal of useful content, or a
+            missed improvement opportunity.
+          </div>
+        </section>
+
+        <section id="data">
+          <h2>2. Data safety</h2>
+          <p>
+            The analysis uses the public FlyRank internship warehouse:
+            <code>FlyRank/internship-warehouse</code>.
+          </p>
+          <table>
+            <thead>
+              <tr><th>Table</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>dim_content.parquet</code></td><td>Content attributes, search demand, authority-related fields, and publication status.</td></tr>
+              <tr><td><code>fact_content_query_90d.parquet</code></td><td>Query-level search-performance aggregates over a 90-day window.</td></tr>
+              <tr><td><code>fact_content_daily_performance_sample.parquet</code></td><td>Daily website and search-performance sample.</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Date windows</h3>
+          <p>
+            The query table contains 90-day fields and comparisons between the last 30 days and
+            the previous 30 days. The exact calendar start and end dates of the release must be
+            verified from the source metadata before final submission. The daily sample's exact
+            coverage and alignment with the query window should also be confirmed.
+          </p>
+
+          <h3>Filtering and exclusions</h3>
+          <ul>
+            <li>Retained content where <code>is_published == True</code>.</li>
+            <li>Retained content where <code>is_deleted == False</code>.</li>
+            <li>Used <code>content_hash_id</code> for joins only, never as a model feature.</li>
+            <li>Excluded publication-status fields from the feature matrix after filtering.</li>
+            <li>Did not use <code>trend_direction</code> or <code>trend_pct</code> as features.</li>
+            <li>Did not expose private queries, client names, private URLs, or credentials.</li>
+          </ul>
+
+          <div class="callout warning">
+            <strong>Leakage check:</strong> A future predictive evaluation must calculate features
+            only from information available before the evaluation period. Future clicks,
+            impressions, trend labels, and other outcome-derived fields must not enter the
+            feature matrix.
+          </div>
+        </section>
+
+        <section id="baseline">
+          <h2>3. Baseline</h2>
+          <p>
+            The proposed baseline ranks eligible content by 90-day impressions, from highest to
+            lowest. A fixed top fraction or fixed number of pages is then selected for review.
+          </p>
+          <p>
+            This is a transparent comparison because impressions are easy to understand and
+            reproduce. The baseline and clustering-based method must use the same content
+            population, selection budget, evaluation window, and outcome metric.
+          </p>
+          <div class="callout warning">
+            <strong>Result status:</strong> The numerical baseline comparison has not been
+            populated on this page. It must be generated by the completed notebook and reported
+            only after a fresh run.
+          </div>
+        </section>
+
+        <section id="method">
+          <h2>4. Model / analysis</h2>
+          <p>
+            The analysis uses standardized K-Means clustering to group content according to
+            observed search, engagement, authority, and content-related features.
+          </p>
+          <h3>Workflow</h3>
+          <ol>
+            <li>Load the three Parquet tables with DuckDB.</li>
+            <li>Aggregate query-level and daily performance by <code>content_hash_id</code>.</li>
+            <li>Join performance aggregates with content attributes.</li>
+            <li>Filter to published, non-deleted content.</li>
+            <li>Engineer ratios, momentum, and log-transformed features.</li>
+            <li>Standardize the feature matrix using <code>StandardScaler</code>.</li>
+            <li>Evaluate candidate cluster counts from 4 through 7 using silhouette score.</li>
+            <li>Fit a six-cluster K-Means model.</li>
+            <li>Inspect cluster profiles and assign descriptive archetype names.</li>
+          </ol>
+
+          <h3>Feature list</h3>
+          <p>
+            <code>log_impressions</code>, <code>log_clicks</code>, <code>ctr_90d</code>,
+            <code>avg_position_90d_w</code>, <code>momentum</code>, <code>query_count</code>,
+            <code>rare_impressions_share_avg</code>, <code>engagement_rate</code>,
+            <code>avg_engagement_sec</code>, <code>log_scroll_events</code>,
+            <code>log_backlinks</code>, <code>log_search_volume</code>, and
+            <code>word_count</code>.
+          </p>
+
+          <h3>Archetype mapping</h3>
+          <table>
+            <thead>
+              <tr><th>Cluster</th><th>Archetype</th><th>Proposed action</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>3</td><td>Star Performer</td><td>Protect</td></tr>
+              <tr><td>2</td><td>Authority Pillar</td><td>Improve</td></tr>
+              <tr><td>0</td><td>Visible Underconverter</td><td>Rewrite</td></tr>
+              <tr><td>4</td><td>Buried Thin Page</td><td>Merge</td></tr>
+              <tr><td>5</td><td>Hidden Engagement Gem</td><td>Monitor</td></tr>
+              <tr><td>1</td><td>Dormant</td><td>Prune</td></tr>
+            </tbody>
+          </table>
+          <p class="muted">
+            These names are analyst interpretations of cluster profiles. There is no supervised
+            ground-truth action label in the current analysis.
+          </p>
+        </section>
+
+        <section id="evaluation">
+          <h2>5. Evaluation</h2>
+          <p>
+            The current notebook evaluates internal cluster structure using silhouette scores
+            and examines cluster profiles. It does not yet establish future predictive
+            performance.
+          </p>
+          <h3>Recommended time-aware design</h3>
+          <ol>
+            <li>Build features from an earlier performance window.</li>
+            <li>Fit the scaler and clustering model using that earlier window.</li>
+            <li>Assign content to archetypes.</li>
+            <li>Measure clicks, impressions, or engagement in a separate future window.</li>
+            <li>Compare the clustering-based priority rule with the impressions baseline.</li>
+            <li>Use the same selection budget and future outcome metric for both methods.</li>
+          </ol>
+
+          <h3>Results table</h3>
+          <table>
+            <thead>
+              <tr><th>Metric</th><th>Baseline</th><th>Clustering-based method</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Selection budget</td><td>To verify</td><td>To verify</td></tr>
+              <tr><td>Evaluation population</td><td>To verify</td><td>To verify</td></tr>
+              <tr><td>Mean future impressions</td><td>To verify</td><td>To verify</td></tr>
+              <tr><td>Mean future clicks</td><td>To verify</td><td>To verify</td></tr>
+              <tr><td>Mean future engagement</td><td>To verify</td><td>To verify</td></tr>
+              <tr><td>Lift over baseline</td><td>To verify</td><td>To verify</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Internal clustering metrics</h3>
+          <p>
+            Candidate values of K from 4 to 7 are evaluated with silhouette score. The exact
+            values from the fresh notebook run should be inserted here before publication.
+          </p>
+          <ul>
+            <li>K = 4: To verify</li>
+            <li>K = 5: To verify</li>
+            <li>K = 6: To verify</li>
+            <li>K = 7: To verify</li>
+          </ul>
+
+          <div class="callout warning">
+            <strong>Honest framing:</strong> No accuracy, lift, or improvement percentage is
+            claimed until the baseline and model are evaluated on the same valid split.
+          </div>
+        </section>
+
+        <section id="interpretation">
+          <h2>6. Interpretation</h2>
+          <p>
+            The six-cluster solution separates content into groups with different observed
+            combinations of visibility, ranking, engagement, authority, and content-related
+            signals.
+          </p>
+
+          <div class="grid">
+            <div class="card"><h3>Star Performer</h3><p class="muted">Interpreted as strong observed performance. Proposed action: Protect.</p></div>
+            <div class="card"><h3>Authority Pillar</h3><p class="muted">Interpreted as strong authority or visibility with possible improvement opportunities. Proposed action: Improve.</p></div>
+            <div class="card"><h3>Visible Underconverter</h3><p class="muted">Interpreted as visible content with weaker click performance relative to exposure. Proposed action: Rewrite.</p></div>
+            <div class="card"><h3>Buried Thin Page</h3><p class="muted">Interpreted as limited visibility with weaker content-depth signals. Proposed action: Review for Merge.</p></div>
+            <div class="card"><h3>Hidden Engagement Gem</h3><p class="muted">Interpreted as useful engagement despite limited search visibility. Proposed action: Monitor.</p></div>
+            <div class="card"><h3>Dormant</h3><p class="muted">Interpreted as limited observed activity. Proposed action: Review for Prune.</p></div>
+          </div>
+
+          <h3>Visual evidence</h3>
+          <figure>
+            <img src="assets/archetype_sizes.png" alt="Bar chart showing the number of content items in each archetype." />
+            <figcaption>Figure 1. Content archetypes by size. Add the generated chart at assets/archetype_sizes.png.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/archetype_scatter.png" alt="Scatter plot showing log impressions versus average search position, colored by cluster." />
+            <figcaption>Figure 2. Visibility versus ranking position. Add the generated chart at assets/archetype_scatter.png.</figcaption>
+          </figure>
+
+          <p>
+            These figures show observed distributions and relationships. They do not establish
+            causation, prove future performance, or predict Google's ranking algorithm.
+          </p>
+        </section>
+
+        <section id="recommendation">
+          <h2>7. Recommendation</h2>
+          <p>
+            The following playbook is a proposed operational review order. It is not a measured
+            ranking of business impact.
+          </p>
+
+          <div class="rank">
+            <div class="rank-num">1</div>
+            <div><h3>Review Visible Underconverters — Rewrite</h3><p>Check search intent, titles, descriptions, page openings, and whether the content matches the likely user need.</p></div>
+          </div>
+          <div class="rank">
+            <div class="rank-num">2</div>
+            <div><h3>Protect Star Performers</h3><p>Monitor clicks, impressions, ranking, and engagement. Avoid unnecessary changes to pages with strong observed performance.</p></div>
+          </div>
+          <div class="rank">
+            <div class="rank-num">3</div>
+            <div><h3>Improve Authority Pillars</h3><p>Review completeness, internal linking, related-topic coverage, and intent alignment.</p></div>
+          </div>
+          <div class="rank">
+            <div class="rank-num">4</div>
+            <div><h3>Review Buried Thin Pages — Merge candidates</h3><p>Check unique purpose, valuable links, duplication, and whether consolidation is appropriate.</p></div>
+          </div>
+          <div class="rank">
+            <div class="rank-num">5</div>
+            <div><h3>Monitor Hidden Engagement Gems</h3><p>Investigate other traffic sources, internal navigation, and whether the page serves a narrow but valuable audience.</p></div>
+          </div>
+          <div class="rank">
+            <div class="rank-num">6</div>
+            <div><h3>Review Dormant Pages — Prune candidates</h3><p>Check business importance, backlinks, historical value, and whether refreshing or redirecting is better than removal.</p></div>
+          </div>
+
+          <div class="callout">
+            <strong>How to use the output:</strong> Filter the action playbook, inspect a small sample
+            from each archetype, check business and technical context, record the human decision,
+            and measure the result in a future period.
+          </div>
+        </section>
+
+        <section id="reproducibility">
+          <h2>8. Reproducibility</h2>
+          <p>
+            The analysis notebook and report should be committed to the project repository.
+          </p>
+          <p>
+            Repository:
+            <a href="https://github.com/Priyansh-rath18/flyrank-internship-" target="_blank" rel="noopener">
+              github.com/Priyansh-rath18/flyrank-internship-
+            </a>
+          </p>
+
+          <h3>Suggested structure</h3>
+          <pre><code>flyrank-internship-/
+├── index.html
+├── assets/
+│   ├── archetype_sizes.png
+│   └── archetype_scatter.png
+├── work/
+│   ├── notebooks/
+│   │   └── content_archetypes_capstone.ipynb
+│   └── capstone_report.md
+└── submission/
+    └── paper_url.txt</code></pre>
+
+          <h3>Environment</h3>
+          <p>
+            Python, DuckDB, Pandas, NumPy, scikit-learn, and Matplotlib.
+          </p>
+          <pre><code>pip install duckdb pandas numpy scikit-learn matplotlib</code></pre>
+
+          <h3>Random seeds</h3>
+          <ul>
+            <li>K-Means: <code>random_state=42</code></li>
+            <li>Sampling: <code>random_state=42</code></li>
+            <li>Silhouette evaluation: <code>random_state=42</code></li>
+          </ul>
+
+          <p>
+            A fresh run must confirm that the notebook executes top to bottom, regenerates the
+            charts and tables, and produces results matching the report. Any sealed or holdout
+            evaluation must include both the code that builds the sealed frame and the metrics
+            file it produced.
+          </p>
+        </section>
+
+        <section id="acknowledgments">
+          <h2>9. Acknowledgments &amp; data credit</h2>
+          <p>
+            Built on the
+            <strong>FlyRank ML Internship dataset</strong>.
+          </p>
+          <p>
+            Data source:
+            <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a>.
+          </p>
+          <p class="muted">
+            The archetypes and recommendations presented here are descriptive, directional
+            decision-support outputs based on the available dataset and analysis.
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <strong>Content Archetypes — FlyRank Capstone</strong>
+      <p class="small">
+        Built by Priyansh Srivastava. This paper reports observed patterns and does not make
+        causal claims about rankings, traffic, or editorial interventions.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
+"""
+
+path = Path("/mnt/data/index.html")
+path.write_text(html, encoding="utf-8")
+print(f"Created: {path}")
+print(f"File size: {path.stat().st_size} bytes")
